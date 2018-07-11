@@ -1,13 +1,13 @@
-import store from '../../config/store';
 import { MAP_HEIGHT, MAP_WIDTH, SPRITE_SIZE } from '../../config/constants';
 import { movePlayer } from './action';
 
-const DIRECTIONS = {
+export const DIRECTIONS = {
   WEST: 'WEST',
   NORTH: 'NORTH',
   EAST: 'EAST',
   SOUTH: 'SOUTH',
 };
+
 const getNewPosition = (direction, oldPos) => {
   switch (direction) {
     case DIRECTIONS.WEST:
@@ -22,46 +22,28 @@ const getNewPosition = (direction, oldPos) => {
       return oldPos;
   }
 };
-const observeBoundaries = (oldPos, newPos) => {
-  const condition = (newPos[0] >= 0 && newPos[0] <= MAP_WIDTH - SPRITE_SIZE)
-    && (newPos[1] >= 0 && newPos[1] <= MAP_HEIGHT - SPRITE_SIZE);
-  return condition
-    ? newPos : oldPos;
+
+const observeImpassable = ([x, y], tiles) => {
+  const newPosY = (y / SPRITE_SIZE);
+  const newPosX = (x / SPRITE_SIZE);
+  try {
+    const nextTile = tiles[newPosY][newPosX];
+    return nextTile < 5;
+  } catch (e) {
+    return false;
+  }
 };
 
-const makePlayerMoveThunk = direction => (dispatch, getState) => {
-  const oldPos = getState().player.position;
-  const newPos = observeBoundaries(oldPos, getNewPosition(direction, oldPos));
-  return dispatch(movePlayer(newPos));
+const observeBoundaries = (oldPos, newPos) => (newPos[0] >= 0
+  && newPos[0] <= MAP_WIDTH - SPRITE_SIZE) && (newPos[1] >= 0
+    && newPos[1] <= MAP_HEIGHT);
+
+export const attemptMove = direction => (dispatch, getState) => {
+  const { player, map } = getState();
+  const oldPos = player.position;
+  const { tiles } = map;
+  const newPosition = getNewPosition(direction, oldPos);
+  if (observeBoundaries(oldPos, newPosition) && observeImpassable(newPosition, tiles)) {
+    dispatch(movePlayer(newPosition));
+  }
 };
-
-const handleMovement = (player) => {
-  const dispatchMove = (direction) => {
-    store.dispatch(makePlayerMoveThunk(direction));
-  };
-
-  const handleKeyDown = (e) => {
-    if ([37, 38, 39, 40].includes(e.keyCode)) {
-      e.preventDefault();
-    }
-    switch (e.keyCode) {
-      case 37:
-        return dispatchMove(DIRECTIONS.WEST);
-      case 38:
-        return dispatchMove(DIRECTIONS.NORTH);
-      case 39:
-        return dispatchMove(DIRECTIONS.EAST);
-      case 40:
-        return dispatchMove(DIRECTIONS.SOUTH);
-      default:
-        return true;
-    }
-  };
-
-  window.addEventListener('keydown', (e) => {
-    handleKeyDown(e);
-  });
-  return player;
-};
-
-export default handleMovement;
